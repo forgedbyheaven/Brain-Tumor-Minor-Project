@@ -1,39 +1,153 @@
 # Brain Tumor Minor Project
 
-This prototype currently prepares reproducible CT and MRI datasets only. It does not define, train, evaluate, or serve a neural network.
+This project focuses on preparing reproducible CT and MRI brain-tumor image datasets and providing a baseline CNN pipeline for classification.
 
-## Raw-data safety
+## Project Overview
 
-The original dataset remains in `dataset/` and is never moved, renamed, copied, deleted, or modified. `data/raw/` is reserved for a future explicitly-authorized raw-data location; it is intentionally empty. Processed CSV manifests in `data/processed/` point back to the immutable original files.
+The project uses two imaging modalities:
 
-## Prepare duplicate-safe splits
+* CT scans
+* MRI scans
 
-Run:
+The dataset contains Healthy and Tumor images for each modality. The preprocessing pipeline is designed to preserve the original dataset while creating duplicate-safe, stratified train, validation, and test manifests.
+
+## Dataset Structure
+
+The original dataset is kept unchanged in:
+
+```text
+dataset/
+├── Brain Tumor CT scan Images/
+│   ├── Healthy/
+│   └── Tumor/
+│
+└── Brain Tumor MRI images/
+    ├── Healthy/
+    └── Tumor/
+```
+
+The raw images are not uploaded to GitHub because of their size.
+
+## Data Preparation
+
+The preprocessing pipeline:
+
+1. Reads the original CT and MRI images.
+2. Computes SHA-256 hashes to identify exact duplicate images.
+3. Keeps one deterministic representative from each exact duplicate group.
+4. Rejects duplicate groups that span different modalities or class labels.
+5. Creates stratified 70/15/15 train, validation, and test splits.
+6. Generates processed CSV manifests pointing to the original image files.
+
+Run preprocessing with:
 
 ```powershell
 python -m src.preprocessing
 ```
 
-The command hashes every original image with SHA-256, keeps one deterministic representative of each exact duplicate group, rejects any duplicate group that spans a modality or class label, and creates separate stratified 70/15/15 CT and MRI manifests. The fixed seed is in `config.yaml`.
-
-Verify existing manifests without rebuilding them:
+To verify existing manifests without rebuilding them:
 
 ```powershell
 python -m src.preprocessing --verify
 ```
 
-## Loading data later
+## Dataset Loading
 
-`src.dataset.BrainTumorDataset` returns `(image_tensor, class_label, image_path, modality)`, where Healthy is `0` and Tumor is `1`. Images are converted to RGB, resized to 224×224, and normalized. Training transforms add only modest augmentation; validation and test transforms are deterministic.
+`src.dataset.BrainTumorDataset` loads the processed image manifests and returns:
 
-MRI class imbalance is supported by `class_weights()` for weighted loss and `weighted_sampler()` for optional balanced sampling. The initial configuration selects weighted loss and leaves sampling disabled.
+```text
+(image_tensor, class_label, image_path, modality)
+```
+
+Class labels are:
+
+```text
+Healthy = 0
+Tumor   = 1
+```
+
+Images are:
+
+* converted to RGB
+* resized to 224 × 224 pixels
+* normalized
+
+Training data uses modest augmentation, while validation and test data use deterministic transformations.
+
+MRI class imbalance is handled through class weighting. Optional weighted sampling is also supported.
 
 ## Baseline CNN
 
-The non-pretrained `BaselineCNN` is available in `src/model.py`. Run only a short smoke test with:
+The project includes a non-pretrained `BaselineCNN` model in:
+
+```text
+src/model.py
+```
+
+A short smoke test can be performed using:
 
 ```powershell
 python -m src.train --modality CT --smoke-test
 ```
 
-Use `--modality MRI` for the separate MRI experiment. Full training is deliberately opt-in through `--train` and saves the best validation-loss checkpoint, history JSON, and metric plots.
+For MRI:
+
+```powershell
+python -m src.train --modality MRI --smoke-test
+```
+
+Full training is intentionally opt-in using:
+
+```powershell
+python -m src.train --modality CT --train
+```
+
+or:
+
+```powershell
+python -m src.train --modality MRI --train
+```
+
+The training pipeline saves the best validation-loss checkpoint, training history, and metric plots.
+
+## Project Structure
+
+```text
+Brain-Tumor-Minor-Project/
+│
+├── src/
+│   ├── __init__.py
+│   ├── preprocessing.py
+│   ├── dataset.py
+│   ├── model.py
+│   ├── train.py
+│   ├── evaluate.py
+│   └── inference.py
+│
+├── configs/
+│   └── config.yaml
+│
+├── data/
+│   └── processed/
+│
+├── reports/
+│
+├── dataset/
+│   └── Original CT and MRI images
+│
+├── README.md
+├── requirements.txt
+└── .gitignore
+```
+
+The `dataset/` directory is excluded from GitHub using `.gitignore`.
+
+## Current Status
+
+The preprocessing and dataset-loading pipeline has been tested successfully. Smoke tests have also been performed for the CT and MRI pipelines.
+
+Full model training and evaluation are performed separately after the data-preparation stage.
+
+## Reproducibility
+
+The project uses a fixed random seed defined in the configuration file to make dataset splitting and experiments reproducible.
