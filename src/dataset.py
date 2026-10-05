@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 from collections import Counter
 from pathlib import Path
+from typing import Mapping
 
 import torch
 from PIL import Image
@@ -22,20 +23,44 @@ def resolve_device(preference: str = "auto") -> torch.device:
     return torch.device(preference)
 
 
-def build_transforms(image_size: int, training: bool, mean: list[float], std: list[float]):
+def build_transforms(
+    image_size: int,
+    training: bool,
+    mean: list[float],
+    std: list[float],
+    augmentation: Mapping[str, object] | None = None,
+):
+    """Build transforms for one split without ever changing source image files.
+
+    Random augmentation is deliberately limited to training samples. Applying it
+    after the split prevents augmented variants of an image from leaking into
+    validation or test data, whose transforms remain fully deterministic.
+    """
     # BrainTumorDataset converts every source image to RGB before applying this transform.
     # Keeping transforms free of local callables also makes them safe for Windows DataLoader workers.
-    steps = [transforms.Resize((image_size, image_size))]
-    if training:
-        steps.extend(
-            [
-                transforms.RandomHorizontalFlip(p=0.5),
-                transforms.RandomRotation(degrees=10),
-                transforms.RandomAffine(degrees=0, translate=(0.05, 0.05), scale=(0.95, 1.05)),
-                transforms.ColorJitter(brightness=0.10, contrast=0.10),
-            ]
-        )
-    steps.extend([transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
+    steps = []
+    settings = augmentation or {}
+    if training and settings.get("enabled", True):
+        horizontal_flip_probability = float(settings.get("horizontal_flip_probability", 0.0))
+        rotation_degrees = float(settings.get("rotation_degrees", 0.0))
+        translate = tuple(settings.get("translate", (0.0, 0.0)))
+        scale = tuple(settings.get("scale", (1.0, 1.0)))
+        brightness = float(settings.get("brightness", 0.0))
+        contrast = float(settings.get("contrast", 0.0))
+
+        # Conservative spatial and intensity changes improve robustness to normal
+        # acquisition/position variation in both CT and MRI without altering labels.
+        if horizontal_flip_probability > 0:
+            steps.append(transforms.RandomHorizontalFlip(p=horizontal_flip_probability))
+        if rotation_degrees > 0:
+            steps.append(transforms.RandomRotation(degrees=rotation_degrees))
+        if translate != (0.0, 0.0) or scale != (1.0, 1.0):
+            steps.append(transforms.RandomAffine(degrees=0, translate=translate, scale=scale))
+        if brightness > 0 or contrast > 0:
+            steps.append(transforms.ColorJitter(brightness=brightness, contrast=contrast))
+
+    # Resize follows augmentation so all augmented images retain the model's 224x224 input size.
+    steps.extend([transforms.Resize((image_size, image_size)), transforms.ToTensor(), transforms.Normalize(mean=mean, std=std)])
     return transforms.Compose(steps)
 
 
@@ -86,10 +111,17 @@ def create_dataloader(
     std: list[float],
     training: bool,
     use_weighted_sampling: bool = False,
+    augmentation: Mapping[str, object] | None = None,
 ) -> DataLoader:
     dataset = BrainTumorDataset(
         manifest_path,
-        transform=build_transforms(image_size, training=training, mean=mean, std=std),
+        transform=build_transforms(
+            image_size,
+            training=training,
+            mean=mean,
+            std=std,
+            augmentation=augmentation,
+        ),
     )
     sampler = weighted_sampler(dataset) if training and use_weighted_sampling else None
     return DataLoader(

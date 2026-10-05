@@ -22,6 +22,15 @@
     "mean": [0.485, 0.456, 0.406],
     "std": [0.229, 0.224, 0.225]
   },
+  "augmentation": {
+    "enabled": true,
+    "horizontal_flip_probability": 0.5,
+    "rotation_degrees": 10,
+    "translate": [0.05, 0.05],
+    "scale": [0.95, 1.05],
+    "brightness": 0.05,
+    "contrast": 0.05
+  },
   "mri": {
     "imbalance_strategy": "weighted_loss",
     "weighted_sampling": false

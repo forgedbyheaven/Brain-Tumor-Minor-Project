@@ -72,7 +72,13 @@ Images are:
 * resized to 224 × 224 pixels
 * normalized
 
-Training data uses modest augmentation, while validation and test data use deterministic transformations.
+Training data uses configurable, on-the-fly augmentation before resizing: optional horizontal flipping,
+rotation up to ±10°, translation up to 5%, scaling from 95–105%, and mild brightness/contrast jitter.
+This improves robustness to normal CT/MRI acquisition and positioning variation without modifying raw images.
+Augmentation is applied only after the duplicate-safe 70/15/15 split and only to the training manifest;
+validation and test data use deterministic resize, tensor conversion, and normalization. Settings are in
+the root-level `config.yaml` under `augmentation` (set `horizontal_flip_probability` to `0` when laterality
+is clinically important).
 
 MRI class imbalance is handled through class weighting. Optional weighted sampling is also supported.
 
@@ -124,8 +130,7 @@ Brain-Tumor-Minor-Project/
 │   ├── evaluate.py
 │   └── inference.py
 │
-├── configs/
-│   └── config.yaml
+├── config.yaml
 │
 ├── data/
 │   └── processed/

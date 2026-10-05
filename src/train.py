@@ -42,6 +42,7 @@ def manifest_path(config: dict, modality: str, split: str) -> Path:
 
 
 def make_loader(config: dict, modality: str, split: str):
+    is_training_split = split == "train"
     return create_dataloader(
         manifest_path(config, modality, split),
         image_size=config["image_size"],
@@ -49,12 +50,15 @@ def make_loader(config: dict, modality: str, split: str):
         num_workers=config["num_workers"],
         mean=config["normalization"]["mean"],
         std=config["normalization"]["std"],
-        training=split == "train",
+        # Only the train manifest receives random augmentation. Validation and
+        # test loaders use deterministic resize, tensor conversion, and normalization.
+        training=is_training_split,
         use_weighted_sampling=(
             modality == "MRI"
-            and split == "train"
+            and is_training_split
             and config["mri"].get("weighted_sampling", False)
         ),
+        augmentation=config.get("augmentation") if is_training_split else None,
     )
 
 
