@@ -1,0 +1,35 @@
+# Dataset
+dataset/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Model files
+*.pth
+*.pt
+*.h5
+*.pkl
+*.joblib
+
+# Training outputs
+runs/
+logs/
+checkpoints/
+outputs/
+
+# IDE
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,47 @@
+{
+  "raw_images": 9618,
+  "unique_images": 9106,
+  "exact_duplicate_groups": 377,
+  "redundant_duplicate_files_removed": 512,
+  "removed_by_modality_and_class": {
+    "CT/Tumor": 3,
+    "MRI/Healthy": 394,
+    "MRI/Tumor": 115
+  },
+  "splits": {
+    "CT": {
+      "train": {
+        "total": 3231,
+        "Healthy": 1610,
+        "Tumor": 1621
+      },
+      "validation": {
+        "total": 692,
+        "Healthy": 345,
+        "Tumor": 347
+      },
+      "test": {
+        "total": 692,
+        "Healthy": 345,
+        "Tumor": 347
+      }
+    },
+    "MRI": {
+      "train": {
+        "total": 3143,
+        "Healthy": 1124,
+        "Tumor": 2019
+      },
+      "validation": {
+        "total": 674,
+        "Healthy": 241,
+        "Tumor": 433
+      },
+      "test": {
+        "total": 674,
+        "Healthy": 241,
+        "Tumor": 433
+      }
+    }
+  }
+}
